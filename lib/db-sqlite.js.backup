@@ -1,0 +1,26 @@
+import Database from 'better-sqlite3';
+import path from 'path';
+
+const dbPath = path.join(process.cwd(), 'healthtime.db');
+const db = new Database(dbPath);
+
+// Wrapper to mimic mysql2 promise interface
+const pool = {
+  query: async (sql, params = []) => {
+    try {
+      const stmt = db.prepare(sql);
+      if (sql.trim().toLowerCase().startsWith('select')) {
+        const rows = stmt.all(...params);
+        return [rows, []]; // Return rows and empty fields array
+      } else {
+        const info = stmt.run(...params);
+        return [{ insertId: info.lastInsertRowid, affectedRows: info.changes }, []];
+      }
+    } catch (error) {
+      console.error('Database Error:', error);
+      throw error;
+    }
+  }
+};
+
+export default pool;

@@ -1,0 +1,25 @@
+# Health Time Clinic – AI Guide
+- Stack: Next.js App Router, client-heavy pages, SQLite via better-sqlite3 stored at healthtime.db in repo root.
+- Setup flow: npm install → node scripts/setup-db.js (idempotent; creates tables and default doctor user) → npm run dev. If schema changes, use node scripts/migrate-db.js to add columns to existing DB.
+- Default login: username doctor / password healthtime (seeded in scripts/schema.sql).
+- Auth path: app/api/auth/login/route.js does plaintext credential check; no hashing or session tokens. AuthContext stores user in localStorage and exposes login/logout.
+- Guarding: dashboard layout in app/dashboard/layout.jsx redirects to /login when no user/localStorage; use client components when calling useAuth or localStorage.
+- Routing map: / redirects to /dashboard; patient flows under /dashboard/patients (list, detail, edit, new); nav includes placeholder links for appointments/settings with no backing pages yet.
+- Data access: lib/db.js wraps better-sqlite3 with pool.query that returns [rows, []]; synchronous calls inside API routes; no migration framework.
+- API contracts: patient list/create in app/api/patients/route.js; patient read/update/delete in app/api/patients/[id]/route.js; measurements list/create in app/api/patients/[id]/measurements/route.js; comments list/create/delete in app/api/patients/[id]/comments/route.js.
+- Patient schema: { first_name, last_name, date_of_birth, gender, marital_status, country, city, area, phone, email, reference, no_of_kids, kids_delivery_info, is_lactating, is_breastfeeding, 19 diagnosis boolean fields (diagnosis_hypothyroid, diagnosis_hyperthyroid, diagnosis_constipation, diagnosis_diabetes, diagnosis_stomach_issue, diagnosis_liver_issue, diagnosis_cervical_spondylosis, diagnosis_sciatica, diagnosis_frozen_shoulder, diagnosis_migraine, diagnosis_epilepsy, diagnosis_insomnia, diagnosis_sleep_apnea, diagnosis_pcos_pcod, diagnosis_fibroids, diagnosis_ovarian_cyst, diagnosis_gynae_issue, diagnosis_multivitamin, diagnosis_medication), gynae_issue_details, multivitamin_details, medication_details }.
+- Measurement schema: { weight, height, waist, hips, bmi, notes, visit_date } with visit_date as ISO date string.
+- Comment schema: { patient_id, comment, created_at }.
+- Responses: POST patients returns { id, message }; POST measurements echoes created fields with id; POST comments returns { id, patient_id, comment, created_at }; errors returned via NextResponse.json with status 500 or 404.
+- Frontend data flow: client components fetch API routes directly; stateful forms live in components/PatientForm.jsx; patient detail page builds measurement history, displays diagnosis badges, shows maternity info, and includes comment section with real-time add/display; patient detail has Edit and Delete buttons in header.
+- CRUD operations: Create (POST /api/patients), Read (GET /api/patients/:id), Update (PUT /api/patients/:id via edit page), Delete (DELETE /api/patients/:id via delete button on detail page with confirmation).
+- Styling: design tokens in app/globals.css; most screens use inline styles; login page uses app/login/Login.css with animated icon background; lucide-react for icons.
+- UX notes: BMI computed client-side on patient detail before POST; age displayed via current year minus birth year (approximate); measurement list prepends newest first; diagnosis fields shown as checkboxes in form and badges on detail page; conditional text fields (gynae_issue_details, multivitamin_details, medication_details) appear only when corresponding checkbox is enabled; comments added via Enter key or + button prepend to list; date input uses dd/mm/yyyy format with auto-formatting (type numbers only, slashes added automatically).
+- DB schema: scripts/schema.sql defines users, patients (with expanded fields), appointments (not yet surfaced), patient_measurements, and patient_comments; script is safe to re-run.
+- Boolean handling: SQLite stores booleans as INTEGER (0/1); convert to JS booleans when reading from DB (Boolean(value)); convert to 0/1 when writing (value ? 1 : 0).
+- Production caveats: auth is trust-on-the-client and passwords are plaintext; add hashing and server-side checks before shipping.
+- Dev commands: npm run dev, npm run build, npm run lint; no automated tests.
+- File hotspots to read first: context/AuthContext.jsx, app/dashboard/layout.jsx, app/dashboard/patients/**/*, app/api/**, scripts/setup-db.js, components/PatientForm.jsx.
+- Pattern to match when adding API routes: use NextResponse.json, call pool.query, and return minimal JSON payloads; keep routes colocated under app/api.
+- Pattern to match when adding gated pages: mark files use client, check useAuth, and redirect/route.push to /login when unauthenticated.
+- Data is stored locally; removing healthtime.db wipes data. Re-run setup script to reseed default user.

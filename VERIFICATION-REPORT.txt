@@ -1,0 +1,131 @@
+=== HEALTH TIME CLINIC - DATABASE CONSISTENCY VERIFICATION ===
+Date: January 5, 2026
+
+SUMMARY:
+✓ All three workflows use the same database (healthtime.db)
+✓ Stock updates are properly synchronized
+⚠ One structural issue found (see Issue #1 below)
+
+---
+
+WORKFLOW 1: ADD MEDICINE BATCH
+Form: /dashboard/medicines/new
+API: POST /api/medicines
+Tables: 
+  - inventory (INSERT new batch)
+  - medicines (UPDATE existing or INSERT new record)
+
+Process:
+1. User fills form with medicine name, batch details, quantities
+2. System inserts into inventory table
+3. System creates/updates medicines table with inventory_id link
+4. Stock level set in inventory.in_stock_qty_boxes
+
+Database Operations:
+  INSERT INTO inventory (...) VALUES (...)
+  UPDATE medicines SET inventory_id = ? WHERE name = ?
+  OR INSERT INTO medicines (name, inventory_id) VALUES (?, ?)
+
+✓ WORKING: Creates proper link between medicines and inventory
+
+---
+
+WORKFLOW 2: PATIENT VISIT - ADD MEDICINE
+Form: /dashboard/patients/[id]/visits/[visitId]/add-medicine
+API: POST /api/patients/[id]/visits/[visitId]/medicines
+Tables:
+  - patient_medicine_transactions (INSERT)
+  - inventory (UPDATE stock via medicine link)
+
+Process:
+1. User selects medicine and quantity for patient
+2. System looks up medicine.inventory_id
+3. If inventory_id exists:
+   - For 'dispensed': Decreases inventory.in_stock_qty_boxes
+   - For 'return'/'refund': Increases inventory.in_stock_qty_boxes
+4. Records transaction in patient_medicine_transactions
+
+Database Operations:
+  SELECT inventory_id FROM medicines WHERE id = ?
+  SELECT in_stock_qty_boxes FROM inventory WHERE id = ?
+  UPDATE inventory SET in_stock_qty_boxes = ? WHERE id = ?
+  INSERT INTO patient_medicine_transactions (...) VALUES (...)
+
+✓ WORKING: Properly updates inventory stock when dispensing medicines
+
+---
+
+WORKFLOW 3: MEDICINE BATCH - STOCK TRANSACTIONS
+Form: /dashboard/medicines/[id] (batch detail page)
+API: POST /api/medicines/[id]/transactions
+Tables:
+  - medicine_transactions (INSERT)
+  - inventory (UPDATE stock directly)
+
+Process:
+1. User adds stock adjustment (received, damaged, etc.)
+2. System records in medicine_transactions
+3. System directly updates inventory.in_stock_qty_boxes
+
+Database Operations:
+  INSERT INTO medicine_transactions (...) VALUES (...)
+  UPDATE inventory SET in_stock_qty_boxes = in_stock_qty_boxes + ? WHERE id = ?
+
+✓ WORKING: Directly adjusts inventory stock levels
+
+---
+
+CONSISTENCY CHECK:
+
+✓ All three workflows read/write to the same database file
+✓ All three workflows modify inventory.in_stock_qty_boxes 
+✓ Patient transactions use medicine_id → inventory_id link
+✓ Medicine batch transactions use inventory_id directly
+✓ Both update paths modify the same stock field
+
+Current Stock Tracking:
+  - Initial stock set via: Add Medicine Batch (in_stock_qty_boxes)
+  - Stock increases via: Medicine Transactions (+), Patient Returns (+)
+  - Stock decreases via: Patient Dispensing (-)
+
+---
+
+ISSUES FOUND:
+
+⚠ ISSUE #1: Patient medicine transactions table structure mismatch
+  
+  Problem: 
+  - API expects 'medicine_id' field in patient_medicine_transactions
+  - Database schema might have 'inventory_id' or 'combination_id' fields
+  - The API query uses: SELECT inventory_id FROM medicines WHERE id = ?
+  
+  This works BUT predefined combinations (65 medicines) have no inventory_id!
+  
+  Impact:
+  - When dispensing predefined combinations, stock is NOT updated
+  - Only works when selecting medicines that have inventory_id set
+  
+  Example:
+  ✓ SLIM-X (has inventory_id=1) → Stock updates correctly
+  ✗ "COBECWT (1+0+0)" (predefined, no inventory) → No stock update
+  
+  Solution Needed:
+  - Either: Link all predefined combinations to inventory batches
+  - Or: Track combination stock separately from base medicine stock
+
+---
+
+RECOMMENDATION:
+
+The system has two types of medicines:
+1. Base medicines (COBECWT, SLIM-X, etc.) - stored as inventory batches
+2. Predefined combinations (e.g., "COBECWT (1+0+0)") - stored in medicines table
+
+Current design: Patient visits can select predefined combinations, but they don't 
+affect inventory because combinations have no inventory_id link.
+
+Two approaches:
+A) Allow dispensing combinations without stock tracking (current behavior)
+B) When dispensing a combination, deduct from the base medicine inventory batches
+
+Which approach do you prefer?

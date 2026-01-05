@@ -30,9 +30,17 @@ export default function AddMedicinePage() {
   useEffect(() => {
     const fetchMedicines = async () => {
       try {
+        // Fetch inventory batches (which have prices)
         const response = await fetch('/api/medicines');
         const data = await response.json();
-        setMedicineList(data);
+        
+        // Also fetch medicine definitions for combinations
+        const medsResponse = await fetch('/api/medicines?type=combination');
+        const medsCombinations = await medsResponse.json();
+        
+        // Combine both lists
+        const combined = [...data, ...medsCombinations];
+        setMedicineList(combined);
       } catch (error) {
         console.error('Error fetching medicines:', error);
       }
@@ -60,10 +68,13 @@ export default function AddMedicinePage() {
   };
 
   const handleSelectMedicine = (item) => {
+    // Get price from inventory (price_out) or medicines (price_per_box)
+    const pricePerBox = item.price_out || item.price_per_box || '';
+    
     setCurrentMedicine(prev => ({
       ...prev,
       medicine_id: item.id,
-      price_per_box: item.price_per_box || ''
+      price_per_box: pricePerBox
     }));
     setMedicineSearch(item.name);
     setShowMedicineDropdown(false);

@@ -24,13 +24,15 @@ export default function NewVisitPage() {
         const visitsRes = await fetch(`/api/patients/${resolvedParams.id}/visits`);
         const visits = await visitsRes.json();
         
-        if (visits && visits.length > 0) {
+        if (visits && Array.isArray(visits) && visits.length > 0) {
           const lastVisit = visits[0];
           const medicinesRes = await fetch(`/api/patients/${resolvedParams.id}/visits/${lastVisit.id}/medicines`);
           const medicines = await medicinesRes.json();
           
           // Filter only dispensed medicines for continuation
-          setLastVisitMedicines(medicines.filter(m => m.transaction_type === 'dispensed'));
+          if (Array.isArray(medicines)) {
+            setLastVisitMedicines(medicines.filter(m => m.transaction_type === 'dispensed'));
+          }
         }
       } catch (error) {
         console.error('Error fetching last visit data:', error);

@@ -5,19 +5,53 @@ export async function GET(request, { params }) {
   try {
     const { id: patientId, visitId } = await params;
 
+    // Fetch transactions for this visit
     const [transactions] = await pool.query(
-      `SELECT pmt.*, m.name as medicine_name
-       FROM patient_medicine_transactions pmt
-       LEFT JOIN medicines m ON pmt.medicine_id = m.id
-       WHERE pmt.patient_id = ? AND pmt.visit_id = ?
-       ORDER BY pmt.created_at DESC`,
+      `SELECT * FROM patient_medicine_transactions
+       WHERE patient_id = ? AND visit_id = ?
+       ORDER BY created_at DESC`,
       [patientId, visitId]
     );
 
-    return NextResponse.json(transactions, { status: 200 });
+    // Ensure transactions is an array
+    const transactionsArray = Array.isArray(transactions) ? transactions : [];
+
+    // Fetch medicine names for the transactions
+    const medicineIds = [...new Set(transactionsArray.map(t => t.medicine_id).filter(Boolean))];
+    const medicineMap = {};
+    
+    if (medicineIds.length > 0) {
+      for (const medId of medicineIds) {
+        // Try medicines table first
+        const [med] = await pool.query(
+          'SELECT id, name FROM medicines WHERE id = ?',
+          [medId]
+        );
+        if (med && med.length > 0) {
+          medicineMap[medId] = med[0].name;
+        } else {
+          // If not found, try inventory table (in case medicine_id is actually an inventory ID)
+          const [inv] = await pool.query(
+            'SELECT id, name FROM inventory WHERE id = ?',
+            [medId]
+          );
+          if (inv && inv.length > 0) {
+            medicineMap[medId] = inv[0].name;
+          }
+        }
+      }
+    }
+    
+    // Add medicine names to transactions
+    const enrichedTransactions = transactionsArray.map(t => ({
+      ...t,
+      medicine_name: medicineMap[t.medicine_id] || null
+    }));
+
+    return NextResponse.json(enrichedTransactions, { status: 200 });
   } catch (error) {
     console.error('Error fetching medicine transactions:', error);
-    return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });
+    return NextResponse.json([], { status: 200 });
   }
 }
 
@@ -43,17 +77,41 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Get medicine info
+    // Try to find as a medicine first, then as an inventory batch
+    let medicine = null;
+    let inventoryId = null;
+    
+    // Check if it's a medicine in the medicines table
     const [medicineRows] = await pool.query(
       'SELECT id, name, inventory_id, is_predefined FROM medicines WHERE id = ?',
       [medicine_id]
     );
 
-    if (!medicineRows.length) {
-      return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+    if (medicineRows.length > 0) {
+      medicine = medicineRows[0];
+      if (medicine.inventory_id) {
+        inventoryId = medicine.inventory_id;
+      }
+    } else {
+      // Try as inventory batch (which might be used directly as medicine_id)
+      const [inventoryRows] = await pool.query(
+        'SELECT id, name, in_stock_qty_boxes FROM inventory WHERE id = ?',
+        [medicine_id]
+      );
+      
+      if (inventoryRows.length > 0) {
+        // Create a pseudo-medicine object for inventory
+        medicine = {
+          id: medicine_id,
+          name: inventoryRows[0].name,
+          inventory_id: medicine_id,
+          is_predefined: false
+        };
+        inventoryId = medicine_id;
+      } else {
+        return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+      }
     }
-
-    const medicine = medicineRows[0];
 
     // Helper function to parse combination and update stock
     const updateStockForCombination = async (medicineName, quantityBoxes, transactionType) => {

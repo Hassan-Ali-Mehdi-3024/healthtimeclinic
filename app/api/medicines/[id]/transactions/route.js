@@ -5,15 +5,37 @@ import pool from '@/lib/db';
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const [rows] = await pool.query(
-      `SELECT mt.*, p.first_name, p.last_name 
-       FROM medicine_transactions mt
-       LEFT JOIN patients p ON mt.patient_id = p.id
-       WHERE mt.inventory_id = ?
-       ORDER BY mt.transaction_date DESC`,
+    // Fetch transactions
+    const [transactions] = await pool.query(
+      `SELECT * FROM medicine_transactions WHERE inventory_id = ? ORDER BY transaction_date DESC`,
       [id]
     );
-    return NextResponse.json(rows);
+    
+    // Enrich with patient names
+    const enriched = [];
+    for (const transaction of transactions) {
+      let first_name = null;
+      let last_name = null;
+      
+      if (transaction.patient_id) {
+        const [patients] = await pool.query(
+          'SELECT first_name, last_name FROM patients WHERE id = ?',
+          [transaction.patient_id]
+        );
+        if (patients.length > 0) {
+          first_name = patients[0].first_name;
+          last_name = patients[0].last_name;
+        }
+      }
+      
+      enriched.push({
+        ...transaction,
+        first_name,
+        last_name
+      });
+    }
+    
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });

@@ -14,10 +14,12 @@ export async function GET(request, { params }) {
       [patientId]
     );
 
-    return NextResponse.json(visits, { status: 200 });
+    // Ensure visits is an array
+    const visitsArray = Array.isArray(visits) ? visits : [];
+    return NextResponse.json(visitsArray, { status: 200 });
   } catch (error) {
     console.error('Error fetching visits:', error);
-    return NextResponse.json({ error: 'Failed to fetch visits' }, { status: 500 });
+    return NextResponse.json([], { status: 200 });
   }
 }
 

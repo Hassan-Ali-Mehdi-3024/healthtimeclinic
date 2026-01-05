@@ -4,39 +4,48 @@ import pool from '@/lib/db';
 export async function GET() {
   try {
     // Get total patients
-    const [patientCount] = await pool.query('SELECT COUNT(*) as count FROM patients');
+    const [patients] = await pool.query('SELECT id FROM patients');
+    const patientCount = patients.length;
     
     // Get total visits
-    const [visitCount] = await pool.query('SELECT COUNT(*) as count FROM patient_visits');
-    
-    // Get upcoming appointments
-    const [appointmentCount] = await pool.query(
-      "SELECT COUNT(*) as count FROM appointments WHERE appointment_date >= date('now') AND status = 'scheduled'"
-    );
+    const [visits] = await pool.query('SELECT id FROM patient_visits');
+    const visitCount = visits.length;
     
     // Get low stock items
-    const [lowStockCount] = await pool.query('SELECT COUNT(*) as count FROM inventory WHERE in_stock_qty_boxes < 10');
+    const [lowStock] = await pool.query('SELECT id FROM inventory WHERE in_stock_qty_boxes < 10');
+    const lowStockCount = lowStock.length;
     
     // Get recent patients
     const [recentPatients] = await pool.query(
       'SELECT id, first_name, last_name, created_at FROM patients ORDER BY created_at DESC LIMIT 5'
     );
     
-    // Get recent visits
-    const [recentVisits] = await pool.query(
-      `SELECT v.id, v.patient_id, p.first_name, p.last_name, v.visit_date 
-       FROM patient_visits v 
-       JOIN patients p ON v.patient_id = p.id 
-       ORDER BY v.visit_date DESC, v.id DESC 
-       LIMIT 5`
+    // Get recent visits with patient names
+    const [recentVisitsRaw] = await pool.query(
+      'SELECT id, patient_id, visit_date FROM patient_visits ORDER BY visit_date DESC, id DESC LIMIT 5'
     );
+    
+    // Enrich with patient names
+    const recentVisits = [];
+    for (const visit of recentVisitsRaw) {
+      const [patientRows] = await pool.query(
+        'SELECT first_name, last_name FROM patients WHERE id = ?',
+        [visit.patient_id]
+      );
+      const patient = patientRows.length > 0 ? patientRows[0] : null;
+      recentVisits.push({
+        ...visit,
+        first_name: patient?.first_name || null,
+        last_name: patient?.last_name || null
+      });
+    }
 
     return NextResponse.json({
       stats: {
-        totalPatients: patientCount[0].count,
-        totalVisits: visitCount[0].count,
-        upcomingAppointments: appointmentCount[0].count,
-        lowStockItems: lowStockCount[0].count,
+        totalPatients: patientCount,
+        totalVisits: visitCount,
+        upcomingAppointments: 0,
+        lowStockItems: lowStockCount,
       },
       recentPatients,
       recentVisits

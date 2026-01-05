@@ -43,9 +43,17 @@ export default function VisitForm({
   useEffect(() => {
     const fetchMedicines = async () => {
       try {
+        // Fetch inventory batches
         const response = await fetch('/api/medicines');
         const data = await response.json();
-        setMedicineList(data);
+        
+        // Also fetch medicine combinations
+        const combinationsResponse = await fetch('/api/medicines?type=combination');
+        const combinations = await combinationsResponse.json();
+        
+        // Combine both lists
+        const combined = [...data, ...combinations];
+        setMedicineList(combined);
       } catch (error) {
         console.error('Error fetching medicines:', error);
       }
@@ -81,10 +89,12 @@ export default function VisitForm({
   };
 
   const handleSelectMedicine = (item) => {
+    // Use price_out from inventory or price_per_box from medicines
+    const pricePerBox = item.price_out || item.price_per_box || '';
     setCurrentMedicine(prev => ({
       ...prev,
       medicine_id: item.id,
-      price_per_box: item.price_per_box || ''
+      price_per_box: pricePerBox
     }));
     setMedicineSearch(item.name);
     setShowMedicineDropdown(false);
@@ -372,7 +382,7 @@ export default function VisitForm({
                         >
                           <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>{item.name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {item.inventory_id ? `Stock: ${item.stock} • Price: Rs. ${item.price_per_box}` : 'Predefined'}
+                            {item.price_out ? `Stock: ${item.in_stock_qty_boxes} • Price: Rs. ${item.price_out}` : item.is_predefined ? 'Predefined' : 'N/A'}
                           </div>
                         </button>
                       ))

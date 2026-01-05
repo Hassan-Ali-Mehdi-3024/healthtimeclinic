@@ -40,6 +40,30 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
     warranty_receive_date: ''
   });
 
+  const [medicineData, setMedicineData] = useState({});
+
+  // Fetch existing medicine prices on mount
+  useEffect(() => {
+    const fetchMedicinePrices = async () => {
+      try {
+        const response = await fetch('/api/medicines?type=batch');
+        if (response.ok) {
+          const data = await response.json();
+          const priceMap = {};
+          data.forEach(med => {
+            if (med.name && med.price_out) {
+              priceMap[med.name] = med.price_out;
+            }
+          });
+          setMedicineData(priceMap);
+        }
+      } catch (error) {
+        console.error('Error fetching medicine prices:', error);
+      }
+    };
+    fetchMedicinePrices();
+  }, []);
+
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -131,10 +155,12 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
     if (name === 'name') {
       // Auto-set description based on medicine name
       const selected = baseMedicines.find(m => m.name === value);
+      const autoPrice = medicineData[value] || '';
       setFormData(prev => ({
         ...prev,
         name: value,
-        description: selected ? selected.description : prev.description
+        description: selected ? selected.description : prev.description,
+        price_out: autoPrice
       }));
     } else {
       setFormData(prev => ({

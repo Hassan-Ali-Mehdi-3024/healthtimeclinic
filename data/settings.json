@@ -1,0 +1,11 @@
+{
+  "clinicName": "Health Time Clinic",
+  "address": "123 Health Street, Wellness City",
+  "phone": "+1 234 567 8900",
+  "email": "contact@healthtime.com",
+  "currency": "Rs",
+  "dateFormat": "DD/MM/YYYY",
+  "primaryColor": "#3b82f6",
+  "theme": "light",
+  "itemsPerPage": 10
+}

@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Tag } from 'lucide-react';
 
-const CombinationForm = ({ combination, onSave, onCancel }) => {
-  const baseMedicines = ['COBECWT', 'COBECWRT', 'COBECGT', 'COBECYT', 'COBECPT', 'SLIM-X'];
+const CombinationForm = ({ combination, availableMedicines = [], onSave, onCancel }) => {
+  const baseMedicines = availableMedicines.length > 0 ? availableMedicines : ['COBECWT', 'COBECWRT', 'COBECGT', 'COBECYT', 'COBECPT', 'SLIM-X'];
   
   const [formData, setFormData] = useState({
     name: '',

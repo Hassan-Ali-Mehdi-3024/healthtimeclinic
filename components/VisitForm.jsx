@@ -360,9 +360,9 @@ export default function VisitForm({
                     zIndex: 10 
                   }}>
                     {filteredMedicines.length > 0 ? (
-                      filteredMedicines.map(item => (
+                      filteredMedicines.map((item, index) => (
                         <button
-                          key={item.id}
+                          key={`${item.id}-${index}`}
                           type="button"
                           onMouseDown={(e) => {
                             e.preventDefault(); // Prevent blur from firing before selection
@@ -394,7 +394,7 @@ export default function VisitForm({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
                   Qty (boxes)
@@ -476,7 +476,7 @@ export default function VisitForm({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
                   Payment Method

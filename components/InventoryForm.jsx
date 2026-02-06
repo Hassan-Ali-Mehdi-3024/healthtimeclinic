@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 
-const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
-  // Hardcoded list of 6 base medicines
-  const baseMedicines = [
-    { name: 'COBECWT', description: 'Cobalt Becal Weight' },
-    { name: 'COBECWRT', description: 'Cobalt Becal Weight Reduced' },
-    { name: 'COBECGT', description: 'Cobalt Becal Green Tea' },
-    { name: 'COBECYT', description: 'Cobalt Becal Yellow Tea' },
-    { name: 'COBECPT', description: 'Cobalt Becal Purple Tea' },
-    { name: 'SLIM-X', description: 'Slim-X Formula' }
-  ];
+// Hardcoded list of 6 base medicines
+const baseMedicines = [
+  { name: 'COBECWT', description: 'Cobalt Becal Weight' },
+  { name: 'COBECWRT', description: 'Cobalt Becal Weight Reduced' },
+  { name: 'COBECGT', description: 'Cobalt Becal Green Tea' },
+  { name: 'COBECYT', description: 'Cobalt Becal Yellow Tea' },
+  { name: 'COBECPT', description: 'Cobalt Becal Purple Tea' },
+  { name: 'SLIM-X', description: 'Slim-X Formula' }
+];
 
+const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -26,7 +26,7 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
     batch_qty_expected_boxes: '',
     batch_qty_received_cartons: '',
     batch_qty_received_boxes: '',
-    drapact_number: '',
+    drapact_number: '2012 (SRO/412) XXI OF 2012',
     warranty_received: false,
     warranty_receive_date: '',
     bill_invoice_number: '',
@@ -212,23 +212,30 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
       {/* Product Information */}
       <div style={sectionStyle}>
         <h3 style={sectionTitleStyle}>Product Information</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
           <div>
             <label style={labelStyle}>Medicine Name *</label>
-            <select
+            <input
+              list="medicine-options"
               name="name"
               value={formData.name}
               onChange={handleChange}
               required
               style={inputStyle}
-            >
-              <option value="">Select a medicine</option>
+              placeholder="Select or type medicine name"
+              autoComplete="off"
+            />
+            <datalist id="medicine-options">
               {baseMedicines.map((med, index) => (
-                <option key={index} value={med.name}>
-                  {med.name}
-                </option>
+                <option key={`base-${index}`} value={med.name} />
               ))}
-            </select>
+              {Object.keys(medicineData).map((name, index) => (
+                // Avoid duplicates if already in baseMedicines
+                !baseMedicines.some(m => m.name === name) && (
+                  <option key={`existing-${index}`} value={name} />
+                )
+              ))}
+            </datalist>
           </div>
           <div>
             <label style={labelStyle}>Description</label>
@@ -271,7 +278,7 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
       {/* Batch Details */}
       <div style={sectionStyle}>
         <h3 style={sectionTitleStyle}>Batch Details</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
           <div>
             <label style={labelStyle}>Batch Number *</label>
             <input
@@ -318,14 +325,15 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
             />
           </div>
           <div>
-            <label style={labelStyle}>DRAPACT Number</label>
+            <label style={labelStyle}>DRAP ACT Number</label>
             <input
               type="text"
               name="drapact_number"
               value={formData.drapact_number}
               onChange={handleChange}
               style={inputStyle}
-              placeholder="Enter DRAPACT number"
+              placeholder="2012 (SRO/412) XXI OF 2012"
+              disabled
             />
           </div>
         </div>
@@ -334,7 +342,7 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
       {/* Quantities */}
       <div style={sectionStyle}>
         <h3 style={sectionTitleStyle}>Quantities</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
           <div>
             <label style={labelStyle}>Expected QTY - Cartons</label>
             <input
@@ -388,8 +396,8 @@ const InventoryForm = ({ initialData, onSubmit, submitLabel = 'Save' }) => {
       {/* Warranty & Invoice */}
       <div style={sectionStyle}>
         <h3 style={sectionTitleStyle}>Warranty & Invoice</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
-          <div style={{ gridColumn: 'span 2' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"

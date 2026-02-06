@@ -1,5 +1,6 @@
 import { AuthProvider } from '../context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import ThemeRegistry from '@/components/ThemeRegistry';
 import './globals.css';
 
 export const metadata = {
@@ -12,8 +13,10 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body suppressHydrationWarning={true}>
         <AuthProvider>
-          <Toaster position="top-right" />
-          {children}
+          <ThemeRegistry>
+            <Toaster position="top-right" />
+            {children}
+          </ThemeRegistry>
         </AuthProvider>
       </body>
     </html>

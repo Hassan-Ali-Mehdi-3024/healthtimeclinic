@@ -1,6 +1,85 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
+export async function GET(request, { params }) {
+  try {
+    const { id: patientId, visitId } = await params;
+    
+    // We can fetch the specific visit directly by ID, but verify it belongs to the patient
+    const [visits] = await pool.query(
+      'SELECT * FROM patient_visits WHERE id = ? AND patient_id = ?',
+      [visitId, patientId]
+    );
+
+    if (visits.length === 0) {
+      return NextResponse.json({ error: 'Visit not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(visits[0]); // Return single object
+  } catch (error) {
+    console.error('Error fetching visit:', error);
+    return NextResponse.json({ error: 'Failed to fetch visit' }, { status: 500 });
+  }
+}
+
+export async function PUT(request, { params }) {
+  try {
+    const { id: patientId, visitId } = await params;
+    const body = await request.json();
+
+    // Fields to update
+    const {
+      visit_date,
+      weight_digital_kg,
+      weight_digital_lbs,
+      weight_manual_kg,
+      height_ft,
+      waist_in,
+      belly_in,
+      hips_in,
+      thighs_in,
+      chest_in,
+      notes
+    } = body;
+
+    await pool.query(
+      `UPDATE patient_visits SET 
+        visit_date = ?,
+        weight_digital_kg = ?,
+        weight_digital_lbs = ?,
+        weight_manual_kg = ?,
+        height_ft = ?,
+        waist_in = ?,
+        belly_in = ?,
+        hips_in = ?,
+        thighs_in = ?,
+        chest_in = ?,
+        notes = ?
+       WHERE id = ? AND patient_id = ?`,
+      [
+        visit_date,
+        weight_digital_kg,
+        weight_digital_lbs,
+        weight_manual_kg,
+        height_ft,
+        waist_in,
+        belly_in,
+        hips_in,
+        thighs_in,
+        chest_in,
+        notes,
+        visitId,
+        patientId
+      ]
+    );
+
+    return NextResponse.json({ message: 'Visit updated successfully' });
+  } catch (error) {
+    console.error('Error updating visit:', error);
+    return NextResponse.json({ error: 'Failed to update visit' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request, { params }) {
   try {
     const { id: patientId, visitId } = await params;
@@ -15,6 +94,7 @@ export async function DELETE(request, { params }) {
     for (const transaction of transactions) {
       const { medicine_id, quantity_boxes, transaction_type } = transaction;
 
+      // Find the inventory item associated with this medicine (combination or single)
       const [medicines] = await pool.query(
         'SELECT inventory_id FROM medicines WHERE id = ?',
         [medicine_id]

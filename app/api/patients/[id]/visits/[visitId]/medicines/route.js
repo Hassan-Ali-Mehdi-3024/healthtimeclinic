@@ -114,44 +114,87 @@ export async function POST(request, { params }) {
     }
 
     // Helper function to parse combination and update stock
-    const updateStockForCombination = async (medicineName, quantityBoxes, transactionType) => {
-      // Parse the combination name to extract base medicines
-      // Format: "COBECWT (1+0+0)" or "COBECWT (1+0+0) + COBECGT (0+0+1)"
-      const parts = medicineName.split(' + ');
+    const updateStockForCombination = async (medicineId, quantityBoxes, transactionType) => {
+      // 1. Get combination details
+      const [comboRows] = await pool.query(
+        'SELECT medicines_included FROM medicines WHERE id = ?',
+        [medicineId]
+      );
+
+      if (!comboRows.length) throw new Error('Combination not found');
       
-      for (const part of parts) {
-        // Extract medicine name (before the parentheses or just the name)
-        const match = part.match(/^([A-Z\-]+)/);
-        if (!match) continue;
+      let includedMedicines = [];
+      try {
+        // Handle if it's already an array or a JSON string
+        const raw = comboRows[0].medicines_included;
+        includedMedicines = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch (e) {
+        console.error('Error parsing included medicines:', e);
+        throw new Error('Invalid combination configuration');
+      }
+
+      if (!Array.isArray(includedMedicines) || includedMedicines.length === 0) {
+        // Fallback to name parsing if JSON is empty (legacy support)
+        // ... (skipping legacy parsing for now to enforce new structure, or add back if needed)
+        throw new Error('Combination has no base medicines defined');
+      }
+
+      // 2. Process each base medicine
+      for (const baseMedicineName of includedMedicines) {
+        let remainingToDeduct = quantityBoxes;
         
-        const baseMedicineName = match[1];
+        // Get all batches with stock, ordered by expiry (FIFO)
+        // For returns, we might just add to the newest batch or a specific "Return" batch? 
+        // For simplicity, returns -> Add to newest batch. Dispense -> Deduct from oldest.
         
-        // Find inventory for this base medicine
-        const [inventoryRows] = await pool.query(
-          'SELECT id, in_stock_qty_boxes FROM inventory WHERE name = ? ORDER BY created_at DESC LIMIT 1',
-          [baseMedicineName]
-        );
-
-        if (inventoryRows.length) {
-          const inventory = inventoryRows[0];
-          let stockChange = 0;
-
-          if (transactionType === 'dispensed') {
-            stockChange = -quantityBoxes;
-          } else if (transactionType === 'return' || transactionType === 'refund') {
-            stockChange = quantityBoxes;
-          }
-
-          const newStock = inventory.in_stock_qty_boxes + stockChange;
-
-          if (newStock < 0) {
-            throw new Error(`Insufficient stock for ${baseMedicineName}. Available: ${inventory.in_stock_qty_boxes}, Required: ${Math.abs(stockChange)}`);
-          }
-
-          await pool.query(
-            'UPDATE inventory SET in_stock_qty_boxes = ? WHERE id = ?',
-            [newStock, inventory.id]
+        if (transactionType === 'dispensed') {
+          const [batches] = await pool.query(
+            'SELECT id, in_stock_qty_boxes FROM inventory WHERE name = ? AND in_stock_qty_boxes > 0 ORDER BY expiry_date ASC, created_at ASC',
+            [baseMedicineName]
           );
+
+          if (!batches.length) {
+             throw new Error(`Out of stock: ${baseMedicineName}`);
+          }
+
+          // Check total availability first
+          const totalStock = batches.reduce((sum, b) => sum + b.in_stock_qty_boxes, 0);
+          if (totalStock < remainingToDeduct) {
+             throw new Error(`Insufficient stock for ${baseMedicineName}. Required: ${remainingToDeduct}, Available: ${totalStock}`);
+          }
+
+          // Deduct from batches
+          for (const batch of batches) {
+            if (remainingToDeduct <= 0) break;
+
+            const deductFromThis = Math.min(batch.in_stock_qty_boxes, remainingToDeduct);
+            
+            await pool.query(
+              'UPDATE inventory SET in_stock_qty_boxes = in_stock_qty_boxes - ? WHERE id = ?',
+              [deductFromThis, batch.id]
+            );
+
+            remainingToDeduct -= deductFromThis;
+          }
+        } else {
+          // Return/Refund: Add back to the most recent batch (or one with latest expiry)
+          // Ideally we'd know which batch it came from, but we don't track that granularly yet.
+          const [batches] = await pool.query(
+            'SELECT id FROM inventory WHERE name = ? ORDER BY expiry_date DESC, created_at DESC LIMIT 1',
+            [baseMedicineName]
+          );
+
+          if (batches.length) {
+            await pool.query(
+              'UPDATE inventory SET in_stock_qty_boxes = in_stock_qty_boxes + ? WHERE id = ?',
+              [quantityBoxes, batches[0].id]
+            );
+          } else {
+             // Edge case: No batches exist (maybe deleted?). 
+             // We can't return stock if no container exists. 
+             // In a real app, we might create a "Returns" batch.
+             throw new Error(`Cannot return ${baseMedicineName}: No active batch found to restore stock.`);
+          }
         }
       }
     };
@@ -188,7 +231,7 @@ export async function POST(request, { params }) {
     } else if (medicine.is_predefined) {
       // Predefined combination - update stock for each base medicine
       try {
-        await updateStockForCombination(medicine.name, quantity_boxes, transaction_type);
+        await updateStockForCombination(medicine.id, quantity_boxes, transaction_type);
       } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }

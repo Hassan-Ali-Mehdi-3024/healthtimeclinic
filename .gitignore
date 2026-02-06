@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+healthtime.db
 
 # Editor directories and files
 .vscode/*

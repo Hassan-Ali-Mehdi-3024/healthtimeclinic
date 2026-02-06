@@ -12,6 +12,22 @@ export async function GET(request) {
       query = 'SELECT * FROM medicines WHERE is_predefined = 1 ORDER BY name ASC';
     } else if (type === 'batch') {
       query = 'SELECT * FROM inventory ORDER BY created_at DESC';
+    } else if (type === 'products') {
+      // Grouped view: List unique medicines with aggregated stock
+      query = `
+        SELECT 
+          m.id, 
+          m.name, 
+          m.description, 
+          COALESCE(SUM(i.in_stock_qty_boxes), 0) as total_stock,
+          MIN(i.expiry_date) as next_expiry,
+          COUNT(i.id) as batch_count
+        FROM medicines m 
+        LEFT JOIN inventory i ON m.name = i.name 
+        WHERE m.is_predefined = 0 
+        GROUP BY m.id, m.name, m.description 
+        ORDER BY m.name ASC
+      `;
     } else {
       // Default: List all inventory batches (this was the main inventory list)
       query = 'SELECT * FROM inventory ORDER BY created_at DESC';

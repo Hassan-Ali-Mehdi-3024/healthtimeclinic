@@ -180,7 +180,7 @@ const PatientForm = ({ initialData = {}, onSubmit, title }) => {
           {/* Basic Information */}
           <div>
             <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--primary-color)' }}>Basic Information</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>First Name *</label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -272,7 +272,7 @@ const PatientForm = ({ initialData = {}, onSubmit, title }) => {
 
           {/* Contact Information */}
           <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--primary-color)' }}>Contact Information</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>Phone Number</label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -341,7 +341,7 @@ const PatientForm = ({ initialData = {}, onSubmit, title }) => {
 
           {/* Maternity Information */}
           <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--primary-color)' }}>Maternity Information</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>Number of Kids</label>
               <input
@@ -396,7 +396,7 @@ const PatientForm = ({ initialData = {}, onSubmit, title }) => {
 
           {/* Diagnosis */}
           <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--primary-color)' }}>Diagnosis</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             {[
               { name: 'diagnosis_hypothyroid', label: 'Hypothyroid' },
               { name: 'diagnosis_hyperthyroid', label: 'Hyperthyroid' },

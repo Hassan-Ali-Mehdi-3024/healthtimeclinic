@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Stethoscope, 
   User, 
   Lock, 
+  Eye,
+  EyeOff,
   Activity, 
   Heart, 
   Pill, 
@@ -14,11 +17,12 @@ import {
   Syringe,
   AlertCircle
 } from 'lucide-react';
-import './Login.css'; // I'll need to move this CSS file too or inline it. I'll assume I move it.
+import './Login.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
   const router = useRouter();
@@ -68,7 +72,8 @@ const Login = () => {
             <Stethoscope size={32} />
           </div>
           <h2>Health Time Clinic</h2>
-          <p>Welcome back, Doctor</p>
+          <p className="subtitle">Beyond Health</p>
+          <p className="welcome-text">Welcome back, Doctor</p>
         </div>
         
         {error && (
@@ -99,13 +104,24 @@ const Login = () => {
             <div className="input-wrapper">
               <Lock className="input-icon" size={20} />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
               />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            <div className="forgot-password-link">
+              <Link href="/forgot-password">Forgot Password?</Link>
             </div>
           </div>
           
